@@ -17,13 +17,14 @@ if token is None:
 
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn -filter:a "volume=0.5"'
+    'options': '-vn'
 }
 YDL_OPTIONS = {
-    'format': 'bestaudio',
+    'format': 'bestaudio/best',
     'noplaylist': True,
-    'extract_flat': True,
-    'quiet': True
+    'quiet': True,
+    'no_warnings': True,
+    'http_chunk_size': 10485760
 }
 
 class Music(commands.Cog):
