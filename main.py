@@ -12,15 +12,13 @@ if token is None:
 
 FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
+    'options': '-vn -filter:a "volume=0.5"'
 }
 YDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'noplaylist': 'True',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'opus',
-    }]
+    'format': 'bestaudio',
+    'noplaylist': True,
+    'extract_flat': True,
+    'quiet': True
 }
 
 class Music(commands.Cog):
@@ -39,9 +37,15 @@ class Music(commands.Cog):
 
         await ctx.send("Carregando música...")
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{search}", download=False)['entries'][0]
-            url = info['formats'][0]['url']
-            title = info['title']
+            try:
+                info = ydl.extract_info(f"ytsearch:{search}", download=False)
+                if not info.get('entries'):
+                    await ctx.send("Não foi possível encontrar a música!")
+                    return
+                video = info['entries'][0]
+                video_info = ydl.extract_info(video['url'], download=False)
+                url = video_info['url']
+                title = video_info['title']
             self.queue.append((url, title))
             await ctx.send(f"Adicionado à fila: {title}")
 
