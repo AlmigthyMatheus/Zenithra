@@ -1,5 +1,7 @@
-{pkgs}: {
+
+{ pkgs }: {
   deps = [
     pkgs.libsodium
+    pkgs.ffmpeg
   ];
 }
