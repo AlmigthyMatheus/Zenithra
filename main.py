@@ -3,9 +3,14 @@ import asyncio
 import os
 import discord
 import yt_dlp
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 from discord.ext import commands
 
 token = os.environ.get("DISCORD_TOKEN")
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
+
 if token is None:
     print("ERROR: Variável de ambiente DISCORD_TOKEN não encontrada!")
     exit(1)
@@ -25,6 +30,23 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = []
+        if SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET:
+            self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+                client_id=SPOTIFY_CLIENT_ID,
+                client_secret=SPOTIFY_CLIENT_SECRET
+            ))
+        else:
+            self.sp = None
+
+    async def get_spotify_track_name(self, url):
+        if not self.sp:
+            return None
+        try:
+            track_id = url.split('track/')[1].split('?')[0]
+            track = self.sp.track(track_id)
+            return f"{track['name']} - {track['artists'][0]['name']}"
+        except:
+            return None
 
     @commands.command()
     async def play(self, ctx, *, search):
@@ -36,18 +58,26 @@ class Music(commands.Cog):
             await channel.connect()
 
         await ctx.send("Carregando música...")
+        
+        # Check if it's a Spotify URL
+        if 'spotify.com/track' in search and self.sp:
+            search = await self.get_spotify_track_name(search)
+            if not search:
+                return await ctx.send("Erro ao processar música do Spotify!")
+
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             try:
                 info = ydl.extract_info(f"ytsearch:{search}", download=False)
                 if not info.get('entries'):
-                    await ctx.send("Não foi possível encontrar a música!")
-                    return
+                    return await ctx.send("Não foi possível encontrar a música!")
                 video = info['entries'][0]
                 video_info = ydl.extract_info(video['url'], download=False)
                 url = video_info['url']
                 title = video_info['title']
-            self.queue.append((url, title))
-            await ctx.send(f"Adicionado à fila: {title}")
+                self.queue.append((url, title))
+                await ctx.send(f"Adicionado à fila: {title}")
+            except Exception as e:
+                return await ctx.send(f"Erro ao processar a música: {str(e)}")
 
         if not ctx.voice_client.is_playing():
             await self.play_next(ctx)
