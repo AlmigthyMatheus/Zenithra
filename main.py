@@ -108,13 +108,25 @@ class Music(commands.Cog):
 
         try:
             channel = ctx.author.voice.channel
-            if ctx.voice_client is None:
-                await channel.connect()
-            elif ctx.voice_client.is_connected():
-                await ctx.voice_client.move_to(channel)
-            
-            if not ctx.voice_client or not ctx.voice_client.is_connected():
-                return await ctx.send("Não foi possível conectar ao canal de voz!")
+            try:
+                if ctx.voice_client is None:
+                    await channel.connect(timeout=20, reconnect=True)
+                elif ctx.voice_client.is_connected():
+                    await ctx.voice_client.move_to(channel)
+                
+                if not ctx.voice_client or not ctx.voice_client.is_connected():
+                    await asyncio.sleep(1)
+                    await channel.connect(timeout=20, reconnect=True)
+                
+                if not ctx.voice_client or not ctx.voice_client.is_connected():
+                    return await ctx.send("Não foi possível conectar ao canal de voz!")
+                
+            except discord.ClientException as e:
+                print(f"Erro de conexão: {e}")
+                if ctx.voice_client:
+                    await ctx.voice_client.disconnect()
+                await asyncio.sleep(1)
+                await channel.connect(timeout=20, reconnect=True)
 
             await ctx.send("Carregando música...")
         
