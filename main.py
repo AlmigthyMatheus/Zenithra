@@ -41,16 +41,65 @@ class Music(commands.Cog):
 
     async def get_spotify_track_name(self, url):
         if not self.sp:
-            return await ctx.send("Configuração do Spotify não encontrada! Verifique as credenciais.")
+            return None
         try:
             if 'track/' in url:
                 track_id = url.split('track/')[1].split('?')[0]
                 track = self.sp.track(track_id)
                 return f"{track['name']} {track['artists'][0]['name']}"
+            elif 'playlist/' in url:
+                playlist_id = url.split('playlist/')[1].split('?')[0]
+                playlist = self.sp.playlist_tracks(playlist_id)
+                tracks = []
+                for item in playlist['items']:
+                    track = item['track']
+                    tracks.append(f"{track['name']} {track['artists'][0]['name']}")
+                return tracks
             return None
         except Exception as e:
             print(f"Erro Spotify: {str(e)}")
             return None
+
+    @commands.command(name='help')
+    async def help_command(self, ctx):
+        embed = discord.Embed(
+            title="Comandos do Bot",
+            description="Lista de comandos disponíveis:",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="!play [música/URL]",
+            value="Toca uma música do YouTube ou Spotify",
+            inline=False
+        )
+        embed.add_field(
+            name="!skip",
+            value="Pula a música atual",
+            inline=False
+        )
+        embed.add_field(
+            name="!pause",
+            value="Pausa a música atual",
+            inline=False
+        )
+        embed.add_field(
+            name="!resume",
+            value="Continua a música pausada",
+            inline=False
+        )
+        embed.add_field(
+            name="!stop",
+            value="Para a música e limpa a fila",
+            inline=False
+        )
+        embed.add_field(
+            name="!queue",
+            value="Mostra a fila de músicas",
+            inline=False
+        )
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def play(self, ctx, *, search):
@@ -116,6 +165,37 @@ class Music(commands.Cog):
         if ctx.voice_client and ctx.voice_client.is_playing():
             ctx.voice_client.stop()
             await ctx.send("Música pulada!")
+
+    @commands.command()
+    async def pause(self, ctx):
+        if ctx.voice_client and ctx.voice_client.is_playing():
+            ctx.voice_client.pause()
+            await ctx.send("Música pausada!")
+
+    @commands.command()
+    async def resume(self, ctx):
+        if ctx.voice_client and ctx.voice_client.is_paused():
+            ctx.voice_client.resume()
+            await ctx.send("Música continuando!")
+
+    @commands.command()
+    async def stop(self, ctx):
+        if ctx.voice_client:
+            self.queue.clear()
+            ctx.voice_client.stop()
+            await ctx.voice_client.disconnect()
+            await ctx.send("Música parada e fila limpa!")
+
+    @commands.command()
+    async def queue(self, ctx):
+        if not self.queue:
+            await ctx.send("A fila está vazia!")
+            return
+            
+        embed = discord.Embed(title="Fila de Músicas", color=discord.Color.blue())
+        for i, (_, title) in enumerate(self.queue, 1):
+            embed.add_field(name=f"{i}. ", value=title, inline=False)
+        await ctx.send(embed=embed)
 
 class MyBot(commands.Bot):
     async def setup_hook(self):
