@@ -41,12 +41,15 @@ class Music(commands.Cog):
 
     async def get_spotify_track_name(self, url):
         if not self.sp:
-            return None
+            return await ctx.send("Configuração do Spotify não encontrada! Verifique as credenciais.")
         try:
-            track_id = url.split('track/')[1].split('?')[0]
-            track = self.sp.track(track_id)
-            return f"{track['name']} - {track['artists'][0]['name']}"
-        except:
+            if 'track/' in url:
+                track_id = url.split('track/')[1].split('?')[0]
+                track = self.sp.track(track_id)
+                return f"{track['name']} {track['artists'][0]['name']}"
+            return None
+        except Exception as e:
+            print(f"Erro Spotify: {str(e)}")
             return None
 
     @commands.command()
@@ -61,10 +64,13 @@ class Music(commands.Cog):
         await ctx.send("Carregando música...")
         
         # Check if it's a Spotify URL
-        if 'spotify.com/track' in search and self.sp:
-            search = await self.get_spotify_track_name(search)
-            if not search:
+        if 'spotify.com/track' in search:
+            if not self.sp:
+                return await ctx.send("Configuração do Spotify não encontrada! Verifique as credenciais.")
+            spotify_name = await self.get_spotify_track_name(search)
+            if not spotify_name:
                 return await ctx.send("Erro ao processar música do Spotify!")
+            search = spotify_name
 
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             try:
