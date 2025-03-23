@@ -172,13 +172,16 @@ class Music(commands.Cog):
             print(f"Erro ao tocar próxima música: {str(e)}")
             await ctx.send("Ocorreu um erro ao tocar a música!")
 
-    @commands.command()
+    @commands.command(aliases=['SKIP'])
     async def skip(self, ctx):
-        if ctx.voice_client and ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
-            await ctx.send("Música pulada!")
+        if ctx.voice_client:
+            if ctx.voice_client.is_playing():
+                await ctx.send("Música pulada!")
+                ctx.voice_client.stop()
+            else:
+                await ctx.send("Não há música tocando!")
 
-    @commands.command()
+    @commands.command(aliases=['PAUSE'])
     async def pause(self, ctx):
         if ctx.voice_client and ctx.voice_client.is_playing():
             ctx.voice_client.pause()
@@ -190,13 +193,19 @@ class Music(commands.Cog):
             ctx.voice_client.resume()
             await ctx.send("Música continuando!")
 
-    @commands.command()
+    @commands.command(aliases=['STOP'])
     async def stop(self, ctx):
         if ctx.voice_client:
-            self.queue.clear()
-            ctx.voice_client.stop()
-            await ctx.voice_client.disconnect()
-            await ctx.send("Música parada e fila limpa!")
+            try:
+                self.queue.clear()
+                if ctx.voice_client.is_playing():
+                    ctx.voice_client.stop()
+                if ctx.voice_client.is_connected():
+                    await ctx.voice_client.disconnect(force=True)
+                await ctx.send("Música parada e fila limpa!")
+            except Exception as e:
+                print(f"Erro ao parar música: {e}")
+                await ctx.send("Erro ao parar música!")
 
     @commands.command()
     async def queue(self, ctx):
