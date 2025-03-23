@@ -57,11 +57,17 @@ class Music(commands.Cog):
         if not ctx.author.voice:
             return await ctx.send("Você precisa estar em um canal de voz!")
 
-        channel = ctx.author.voice.channel
-        if ctx.voice_client is None:
-            await channel.connect()
+        try:
+            channel = ctx.author.voice.channel
+            if ctx.voice_client is None:
+                await channel.connect()
+            elif ctx.voice_client.is_connected():
+                await ctx.voice_client.move_to(channel)
+            
+            if not ctx.voice_client or not ctx.voice_client.is_connected():
+                return await ctx.send("Não foi possível conectar ao canal de voz!")
 
-        await ctx.send("Carregando música...")
+            await ctx.send("Carregando música...")
         
         # Check if it's a Spotify URL
         if 'spotify.com/track' in search:
@@ -90,13 +96,20 @@ class Music(commands.Cog):
             await self.play_next(ctx)
 
     async def play_next(self, ctx):
-        if self.queue:
-            url, title = self.queue.pop(0)
-            source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
-            ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop))
-            await ctx.send(f"Tocando agora: {title}")
-        else:
-            await ctx.send("A fila está vazia!")
+        try:
+            if not ctx.voice_client or not ctx.voice_client.is_connected():
+                return
+                
+            if self.queue:
+                url, title = self.queue.pop(0)
+                source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
+                ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop))
+                await ctx.send(f"Tocando agora: {title}")
+            else:
+                await ctx.send("A fila está vazia!")
+        except Exception as e:
+            print(f"Erro ao tocar próxima música: {str(e)}")
+            await ctx.send("Ocorreu um erro ao tocar a música!")
 
     @commands.command()
     async def skip(self, ctx):
