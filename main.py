@@ -131,13 +131,30 @@ class Music(commands.Cog):
             await ctx.send("Carregando música...")
         
         # Check if it's a Spotify URL
-        if 'spotify.com/track' in search:
+        if 'spotify.com' in search:
             if not self.sp:
-                return await ctx.send("Configuração do Spotify não encontrada! Verifique as credenciais.")
-            spotify_name = await self.get_spotify_track_name(search)
-            if not spotify_name:
-                return await ctx.send("Erro ao processar música do Spotify!")
-            search = spotify_name
+                return await ctx.send("Configuração do Spotify não encontrada! Verifique as credenciais do Spotify.")
+            if not (SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET):
+                return await ctx.send("Credenciais do Spotify não configuradas!")
+            
+            try:
+                spotify_name = await self.get_spotify_track_name(search)
+                if not spotify_name:
+                    return await ctx.send("Música do Spotify não encontrada!")
+                
+                if isinstance(spotify_name, list):
+                    # É uma playlist
+                    await ctx.send(f"Adicionando {len(spotify_name)} músicas da playlist...")
+                    for track_name in spotify_name:
+                        self.queue.append((None, track_name))
+                    await self.play_next(ctx)
+                    return
+                else:
+                    # É uma música única
+                    search = spotify_name
+            except Exception as e:
+                print(f"Erro Spotify: {str(e)}")
+                return await ctx.send("Erro ao processar música do Spotify! Verifique se o link está correto.")
 
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             try:
